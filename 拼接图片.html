@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>图片拼接工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        #preview {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            margin-top: 20px;
+            max-width: 100%; /* 确保在移动端自适应 */
+        }
+        input, select, button {
+            margin: 10px;
+            padding: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>图片拼接工具</h1>
+    <input type="file" id="imageInput" multiple accept="image/*">
+    <select id="directionSelect">
+        <option value="vertical">纵向拼接</option>
+        <option value="horizontal">横向拼接</option>
+    </select>
+    <button id="downloadBtn" disabled>下载拼接图片</button>
+    <div id="preview"></div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const preview = document.getElementById('preview');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const directionSelect = document.getElementById('directionSelect');
+
+        let images = [];
+
+        imageInput.addEventListener('change', async (event) => {
+            images = [];
+            preview.innerHTML = '';
+            const files = Array.from(event.target.files);
+
+            for (const file of files) {
+                const img = new Image();
+                img.src = URL.createObjectURL(file);
+                img.style.maxWidth = '100px'; // 控制预览图显示大小
+                img.style.margin = '10px';
+                preview.appendChild(img);
+
+                await new Promise((resolve) => {
+                    img.onload = () => {
+                        images.push({
+                            element: img,
+                            width: img.naturalWidth, // 使用原始宽度
+                            height: img.naturalHeight // 使用原始高度
+                        });
+                        resolve();
+                    };
+                });
+            }
+
+            if (images.length > 0) {
+                generateCanvas();
+                downloadBtn.disabled = false;
+            }
+        });
+
+        function generateCanvas() {
+            const direction = directionSelect.value; // 获取拼接方向
+            let totalWidth, totalHeight;
+
+            if (direction === 'horizontal') {
+                // 横向拼接
+                totalWidth = images.reduce((sum, img) => sum + img.width, 0);
+                totalHeight = Math.max(...images.map(img => img.height));
+            } else {
+                // 纵向拼接
+                totalWidth = Math.max(...images.map(img => img.width));
+                totalHeight = images.reduce((sum, img) => sum + img.height, 0);
+            }
+
+            canvas.width = totalWidth;
+            canvas.height = totalHeight;
+
+            let xOffset = 0, yOffset = 0;
+            images.forEach(({ element, width, height }) => {
+                if (direction === 'horizontal') {
+                    ctx.drawImage(element, xOffset, 0, width, height);
+                    xOffset += width;
+                } else {
+                    ctx.drawImage(element, 0, yOffset, width, height);
+                    yOffset += height;
+                }
+            });
+        }
+
+        downloadBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = '拼接图片.png';
+            link.href = canvas.toDataURL('image/png', 1.0); // 设置图像质量为最高
+            link.click();
+        });
+    </script>
+</body>
+</html>
